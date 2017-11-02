@@ -83,7 +83,7 @@ protected:
          * @brief Returns the signal's index.
          * @return
          */
-        int getSignaIndex() const;
+        int getSignalIndex() const;
 
         /**
          * @brief Returns the signal's method index.

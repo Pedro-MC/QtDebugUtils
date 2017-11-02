@@ -102,7 +102,7 @@ void QSignalSlotMonitor::signalEndCallback(QObject* signaler, int signalIndex) {
     Q_ASSERT(_signalInfos.size() >= 1);
     const SignalInfo& signalInfo = _signalInfos.constLast();
     Q_ASSERT(signalInfo.getSignaler() == signaler);
-    Q_ASSERT(signalInfo.getSignaIndex() == signalIndex);
+    Q_ASSERT(signalInfo.getSignalIndex() == signalIndex);
     for(QSignalSlotMonitor* callback: _monitors) {
         callback->signalEnd(signalInfo);
     }
@@ -133,7 +133,7 @@ QObject* QSignalSlotMonitor::SignalInfo::getSignaler() const {
     return _signaler;
 }
 
-int QSignalSlotMonitor::SignalInfo::getSignaIndex() const {
+int QSignalSlotMonitor::SignalInfo::getSignalIndex() const {
     return _signalIndex;
 }
 
