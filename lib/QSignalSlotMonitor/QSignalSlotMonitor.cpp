@@ -138,18 +138,14 @@ int QSignalSlotMonitor::SignalInfo::getSignalIndex() const {
 }
 
 int QSignalSlotMonitor::SignalInfo::getMethodIndex() const {
-    if(_methodIndex < 0) {
+    if(_methodIndex == INDEX_UNKNOWN) {
         const QMetaObject* const metaObject = _signaler->metaObject();
         const int methodCount = metaObject->methodCount();
-        int signalIndex = -1;
-        int& methodIndex = const_cast<SignalInfo*>(this)->_methodIndex;
-        for(methodIndex = 0; methodIndex < methodCount; ++methodIndex) {
-            const QMetaMethod metaMethod = metaObject->method(methodIndex);
-            if(metaMethod.methodType() == QMetaMethod::Signal) {
-                ++signalIndex;
-                if(signalIndex == _signalIndex) {
-                    break;
-                }
+        for(int methodIndex = 0, signalIndex = -1; methodIndex < methodCount; ++methodIndex) {
+            if(metaObject->method(methodIndex).methodType() == QMetaMethod::Signal
+               && (++signalIndex) == _signalIndex) {
+                const_cast<int&>(_methodIndex) = methodIndex;
+                break;
             }
         }
     }
