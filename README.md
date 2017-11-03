@@ -59,7 +59,7 @@ If you find any bugs or have any feature requests please open an issue at [https
 
 Contributions are welcomed.
 
-See [AUTHORS](https://github.com/Pedro-MC/QtDebugUtils/blob/master/AUTHORS) for a list of contributors.
+See [AUTHORS](https://github.com/Pedro-MC/QtDebugUtils/blob/master/AUTHORS.md) for a list of contributors.
 
 ## License
 
