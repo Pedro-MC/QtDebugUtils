@@ -53,7 +53,7 @@ If only some part is needed, instead of linking with the library, it may be more
 
 ## Bugs and feature requests
 
-If you find any bugs or have any feature requests please open an issue at [https://github.com/Pedro-MC/QtDebugUtils/issues]().
+If you find any bugs or have any feature requests please open an issue at [https://github.com/Pedro-MC/QtDebugUtils/issues](https://github.com/Pedro-MC/QtDebugUtils/issues).
 
 ## Contributions
 
