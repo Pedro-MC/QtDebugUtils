@@ -63,12 +63,22 @@ protected:
 
     public:
 
+        /** @brief Value for a unknown signal or method index. */
+        static const int INDEX_UNKNOWN = -1;
+
         /**
          * @brief Constructor.
          * @param signaler Pointer to the signal's signaler/emiter.
-         * @param signalIndex The signal's index. May be -1 if methodIndex is valid.
-         * @param methodIndex The method's index. May be -1 if signalIndex is valid.
+         * @param signalIndex The signal's index.
+         *                    Must be equal or greater than zero or INDEX_UNKNOWN.
+         * @param methodIndex The method's index.
+         *                    Must be equal or greater than zero or INDEX_UNKNOWN.
          * @param parametersPointers Pointers to the signal's parameters.
+         * @note At least one of signalIndex and methodIndex must NOT be INDEX_UNKNOWN.
+         *       If only one index is specified, the other index will be determined
+         *       from the specified index.
+         *       If both indexes are specified, they must refer to the same
+         *       signal/method.
          */
         SignalInfo(QObject* signaler, int signalIndex, int methodIndex
                    , const void* const* parametersPointers);

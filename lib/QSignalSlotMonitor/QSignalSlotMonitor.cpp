@@ -203,6 +203,12 @@ QSignalSlotMonitor::SignalInfo::SignalInfo(QObject* signaler
     Q_ASSERT(signaler);
     Q_ASSERT(signalIndex >= 0 || methodIndex >= 0);
     Q_ASSERT(parametersPointers);
+    Q_ASSERT(signalIndex >= INDEX_UNKNOWN);
+    Q_ASSERT(methodIndex >= INDEX_UNKNOWN);
+    Q_ASSERT(signalIndex == INDEX_UNKNOWN || methodIndex == INDEX_UNKNOWN ||
+             // set method index to unknown to force a recalculation from signal index.
+             ((_methodIndex = INDEX_UNKNOWN) && methodIndex == getMethodIndex()));
+    Q_ASSERT(getMetaMethod().methodType() == QMetaMethod::Signal);
 }
 
 QObject* QSignalSlotMonitor::SlotInfo::getReceiver() const {
