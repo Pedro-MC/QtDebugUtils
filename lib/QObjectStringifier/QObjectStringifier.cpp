@@ -43,15 +43,11 @@ const QMetaObject* QObjectStringifier::getMetaObject() const {
 void QObjectStringifier::stringify(const QObject* object, QString& buffer) {
     const auto& stringifiers = getStringifiers();
     const QMetaObject* metaObject = object ? object->metaObject() : nullptr;
-    forever {
-        const auto iter = stringifiers.find(metaObject);
-        if(iter == stringifiers.constEnd()) {
-            metaObject = metaObject->superClass();
-        } else {
-            iter.value()->doStringify(object, buffer);
-            break;
-        }
+    decltype(stringifiers.find(metaObject)) iter;
+    while((iter = stringifiers.find(metaObject)) == stringifiers.constEnd()) {
+        metaObject = metaObject->superClass();
     }
+    iter.value()->doStringify(object, buffer);
 }
 
 DECLARE_VALUE_STRINGIFIER(QObjectBaseValueStringifier, QMetaType::QObjectStar);
