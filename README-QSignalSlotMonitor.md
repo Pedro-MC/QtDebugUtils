@@ -33,6 +33,8 @@ Then just instanciate a object of the derived class and use the methods:
 * `isMonitorEnabled()` to check if the monitor is enabled;
 * `enableMonitor()` to enable the monitor;
 * `disableMonitor()` to disable the monitor.
+* `enableThreadSafe()` to enable thread safe monitoring (disabled by default due to overhead).
+* `disableThreadSafe()` to disable thread safe monitoring.
 
 ## Examples
 
