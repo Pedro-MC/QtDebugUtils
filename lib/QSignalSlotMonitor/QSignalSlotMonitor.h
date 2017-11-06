@@ -147,6 +147,7 @@ protected:
          * @brief SlotInfo
          * @param receiver Pointer to the signal's receiver.
          * @param methodIndex The receiving slot's method index.
+         *                    Must be equal or greater than zero.
          */
         SlotInfo(QObject* receiver, int methodIndex);
 
