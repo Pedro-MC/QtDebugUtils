@@ -18,6 +18,8 @@
 *******************************************************************************/
 #include "QSignalSlotMonitor.h"
 
+#include <QMutex>
+
 /* Taken from qobject_p.h */
 /* BEGIN */
 struct QSignalSpyCallbackSet
@@ -31,12 +33,60 @@ struct QSignalSpyCallbackSet
 extern void qt_register_signal_spy_callbacks(const QSignalSpyCallbackSet &callback_set);
 /* END */
 
-QVector<QSignalSlotMonitor*> QSignalSlotMonitor::_monitors;
-QVector<QSignalSlotMonitor::SignalInfo> QSignalSlotMonitor::_signalInfos;
+class QSignalSlotMonitorData {
+
+public:
+
+    QSignalSlotMonitorData()
+        : _useMutex(_threadSafeAccess) {
+        if(_useMutex) {
+            _mutex.lock();
+        }
+    }
+
+    ~QSignalSlotMonitorData() {
+        if(_useMutex) {
+            _mutex.unlock();
+        }
+    }
+
+    inline QVector<QSignalSlotMonitor*>& getMonitors() {
+        return _monitors;
+    }
+
+    inline QVector<QSignalSlotMonitor::SignalInfo>& getSignalInfos() {
+        return _signalInfos;
+    }
+
+    static inline void enableThreadSafeAccess() {
+        _threadSafeAccess = true;
+    }
+
+    static inline void disableThreadSafeAccess() {
+        _threadSafeAccess = false;
+    }
+
+private:
+
+    const bool _useMutex;
+
+    static QVector<QSignalSlotMonitor::SignalInfo> _signalInfos;
+    static QVector<QSignalSlotMonitor*> _monitors;
+    static QMutex _mutex;
+    static bool _threadSafeAccess;
+
+};
+
+QVector<QSignalSlotMonitor::SignalInfo> QSignalSlotMonitorData::_signalInfos;
+QVector<QSignalSlotMonitor*> QSignalSlotMonitorData::_monitors;
+QMutex QSignalSlotMonitorData::_mutex;
+bool QSignalSlotMonitorData::_threadSafeAccess = false;
 
 QSignalSlotMonitor::QSignalSlotMonitor(QObject* parent)
     : QObject(parent) {
-    _signalInfos.reserve(32);
+    QSignalSlotMonitorData data;
+    auto& signalInfos = data.getSignalInfos();
+    signalInfos.reserve(32);
 }
 
 QSignalSlotMonitor::~QSignalSlotMonitor() {
@@ -44,29 +94,43 @@ QSignalSlotMonitor::~QSignalSlotMonitor() {
 }
 
 bool QSignalSlotMonitor::isMonitorEnabled() const {
-    return _monitors.contains(const_cast<QSignalSlotMonitor*>(this));
+    QSignalSlotMonitorData data;
+    auto& monitors = data.getMonitors();
+    return monitors.contains(const_cast<QSignalSlotMonitor*>(this));
 }
 
 void QSignalSlotMonitor::enableMonitor() {
-    if(isMonitorEnabled()) {
+    QSignalSlotMonitorData data;
+    auto& monitors = data.getMonitors();
+    if(monitors.contains(this)) {
         return;
     }
-    if(_monitors.isEmpty()) {
+    if(monitors.isEmpty()) {
         static const QSignalSpyCallbackSet callbackSet = {
             &signalBeginCallback, &slotBeginCallback,
             &signalEndCallback, &slotEndCallback
         };
         qt_register_signal_spy_callbacks(callbackSet);
     }
-    _monitors.append(this);
+    monitors.append(this);
 }
 
 void QSignalSlotMonitor::disableMonitor() {
-    if(_monitors.removeOne(this) && _monitors.isEmpty()) {
+    QSignalSlotMonitorData data;
+    auto& monitors = data.getMonitors();
+    if(monitors.removeOne(this) && monitors.isEmpty()) {
         static const QSignalSpyCallbackSet nullCallbackSet
                 = {nullptr, nullptr, nullptr, nullptr};
         qt_register_signal_spy_callbacks(nullCallbackSet);
     }
+}
+
+void QSignalSlotMonitor::enableThreadSafe() {
+    QSignalSlotMonitorData::enableThreadSafeAccess();
+}
+
+void QSignalSlotMonitor::disableThreadSafe() {
+    QSignalSlotMonitorData::disableThreadSafeAccess();
 }
 
 void QSignalSlotMonitor::signalBegin(const SignalInfo& signalInfo) {
@@ -91,41 +155,53 @@ void QSignalSlotMonitor::slotEnd(const SignalInfo& signalInfo
 
 void QSignalSlotMonitor::signalBeginCallback(QObject* signaler, int signalIndex
                                              , void** signalParametersPointers) {
+    QSignalSlotMonitorData data;
+    auto& signalInfos = data.getSignalInfos();
+    auto& monitors = data.getMonitors();
     SignalInfo signalInfo(signaler, signalIndex, -1, signalParametersPointers);
-    _signalInfos.push_back(signalInfo);
-    for(QSignalSlotMonitor* callback : _monitors) {
-        callback->signalBegin(signalInfo);
+    signalInfos.push_back(signalInfo);
+    for(QSignalSlotMonitor* monitor : monitors) {
+        monitor->signalBegin(signalInfo);
     }
 }
 
 void QSignalSlotMonitor::signalEndCallback(QObject* signaler, int signalIndex) {
-    Q_ASSERT(_signalInfos.size() >= 1);
-    const SignalInfo& signalInfo = _signalInfos.constLast();
+    QSignalSlotMonitorData data;
+    auto& signalInfos = data.getSignalInfos();
+    auto& monitors = data.getMonitors();
+    Q_ASSERT(signalInfos.size() >= 1);
+    const SignalInfo& signalInfo = signalInfos.constLast();
     Q_ASSERT(signalInfo.getSignaler() == signaler);
     Q_ASSERT(signalInfo.getSignalIndex() == signalIndex);
-    for(QSignalSlotMonitor* callback: _monitors) {
-        callback->signalEnd(signalInfo);
+    for(QSignalSlotMonitor* monitor: monitors) {
+        monitor->signalEnd(signalInfo);
     }
-    _signalInfos.pop_back();
+    signalInfos.pop_back();
 }
 
 void QSignalSlotMonitor::slotBeginCallback(QObject* receiver, int methodIndex
                                            , void** signalParametersPointers) {
-    Q_ASSERT(_signalInfos.size() >= 1);
-    const SignalInfo& signalInfo = _signalInfos.constLast();
+    QSignalSlotMonitorData data;
+    auto& signalInfos = data.getSignalInfos();
+    auto& monitors = data.getMonitors();
+    Q_ASSERT(signalInfos.size() >= 1);
+    const SignalInfo& signalInfo = signalInfos.constLast();
     Q_ASSERT(signalInfo.getParametersPointers() == signalParametersPointers);
     const SlotInfo slotInfo(receiver, methodIndex);
-    for(QSignalSlotMonitor* callback : _monitors) {
-        callback->slotBegin(signalInfo, slotInfo);
+    for(QSignalSlotMonitor* monitor : monitors) {
+        monitor->slotBegin(signalInfo, slotInfo);
     }
 }
 
 void QSignalSlotMonitor::slotEndCallback(QObject* receiver, int methodIndex) {
-    Q_ASSERT(_signalInfos.size() >= 1);
-    const SignalInfo& signalInfo = _signalInfos.constLast();
+    QSignalSlotMonitorData data;
+    auto& signalInfos = data.getSignalInfos();
+    auto& monitors = data.getMonitors();
+    Q_ASSERT(signalInfos.size() >= 1);
+    const SignalInfo& signalInfo = signalInfos.constLast();
     const SlotInfo slotInfo(receiver, methodIndex);
-    for(QSignalSlotMonitor* callback : _monitors) {
-        callback->slotEnd(signalInfo, slotInfo);
+    for(QSignalSlotMonitor* monitor : monitors) {
+        monitor->slotEnd(signalInfo, slotInfo);
     }
 }
 

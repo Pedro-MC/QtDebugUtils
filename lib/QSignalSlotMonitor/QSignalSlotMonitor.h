@@ -27,6 +27,8 @@
 class QSignalSlotMonitor : public QObject {
     Q_OBJECT
 
+    friend class QSignalSlotMonitorData;
+
 public:
 
     /**
@@ -55,6 +57,20 @@ public:
      * @brief Disables the monitor.
      */
     void disableMonitor();
+
+    /**
+     * @brief Enable thread safe monitoring.
+     * @note Thread safe monitoring is disabled by default, to avoid overhead.
+     *       On threaded programs, this function should be called before enabling
+     *       monitoring.
+     */
+    static void enableThreadSafe();
+
+    /**
+     * @brief Disable thread safe monitoring.
+     * @note Thread safe monitoring is disabled by default, to avoid overhead.
+     */
+    static void disableThreadSafe();
 
 protected:
 
@@ -246,9 +262,6 @@ private:
      * @param signalIndex The slot's method index.
      */
     static void slotEndCallback(QObject* signaler, int slotMethodIndex);
-
-    static QVector<QSignalSlotMonitor*> _monitors;
-    static QVector<SignalInfo> _signalInfos;
 
 };
 
