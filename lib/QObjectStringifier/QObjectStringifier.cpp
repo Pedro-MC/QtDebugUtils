@@ -30,10 +30,17 @@ public:
     typedef QObjectStringifier::StringifierFunc StringifierFunc;
     typedef QMultiHash<const QMetaObject*, StringifierFunc> Stringifiers;
 
-    QObjectStringifierData() {
+    QObjectStringifierData()
+        : _useMutex(_threadSafeAccess) {
+        if(_useMutex) {
+            _mutex.lock();
+        }
     }
 
     ~QObjectStringifierData() {
+        if(_useMutex) {
+            _mutex.unlock();
+        }
     }
 
     inline Stringifiers& getStringifiers() {
@@ -52,13 +59,27 @@ public:
         _stringifiers.remove(metaObject, stringifierFunc);
     }
 
+    static inline void enableThreadSafeAccess() {
+        _threadSafeAccess = true;
+    }
+
+    static inline void disableThreadSafeAccess() {
+        _threadSafeAccess = false;
+    }
+
 private:
 
+    const bool _useMutex;
+
     static Stringifiers _stringifiers;
+    static QMutex _mutex;
+    static bool _threadSafeAccess;
 
 };
 
 QObjectStringifierData::Stringifiers QObjectStringifierData::_stringifiers;
+QMutex QObjectStringifierData::_mutex;
+bool QObjectStringifierData::_threadSafeAccess = false;
 
 QObjectStringifier::QObjectStringifier(const QMetaObject* metaObject
                                        , StringifierFunc stringifierFunc
@@ -90,6 +111,14 @@ void QObjectStringifier::enable() {
 
 void QObjectStringifier::disable() {
     QObjectStringifierData().disableStringifier(_metaObject, _stringifierFunc);
+}
+
+void QObjectStringifier::enableThreadSafe() {
+    QObjectStringifierData::enableThreadSafeAccess();
+}
+
+void QObjectStringifier::disableThreadSafe() {
+    QObjectStringifierData::disableThreadSafeAccess();
 }
 
 void QObjectStringifier::stringify(const QObject* object, QString& buffer) {

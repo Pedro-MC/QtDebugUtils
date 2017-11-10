@@ -75,6 +75,22 @@ public:
     void disable();
 
     /**
+     * @brief Enable thread safe operations.
+     * @note Thread safe operations are disabled by default, to avoid overhead.
+     *       This function should be called before calling QObjectStringifier(),
+     *       enable() or disable() with multiple threads running.
+     *       If all stringifiers are constructed and enabled/disabled before
+     *       any threads are used then there is no need to call this function.
+     */
+    static void enableThreadSafe();
+
+    /**
+     * @brief Disable thread safe operations.
+     * @note Thread safe monitoring is disabled by default, to avoid overhead.
+     */
+    static void disableThreadSafe();
+
+    /**
      * @brief Stringify the given object and append it to the given buffer.
      * @param object Pointer to the object to be stringified. Can be an object
      *               from a class derived from QObject.
