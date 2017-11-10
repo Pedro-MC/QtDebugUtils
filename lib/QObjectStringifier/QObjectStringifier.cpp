@@ -21,33 +21,75 @@
 #include "QValueStringifier.h"
 
 #include <QMultiHash>
+#include <QMutex>
 
-static QMultiHash<const QMetaObject*, QObjectStringifier*>& getStringifiers() {
-    static QMultiHash<const QMetaObject*, QObjectStringifier*> stringifiers;
-    return stringifiers;
-}
+class QObjectStringifierData {
 
-QObjectStringifier::QObjectStringifier(const QMetaObject* metaObject)
-    : _metaObject(metaObject) {
-    getStringifiers().insertMulti(_metaObject, this);
+public:
+
+    typedef QObjectStringifier::StringifierFunc StringifierFunc;
+    typedef QMultiHash<const QMetaObject*, StringifierFunc> Stringifiers;
+
+    QObjectStringifierData() {
+    }
+
+    ~QObjectStringifierData() {
+    }
+
+    inline Stringifiers& getStringifiers() {
+        return _stringifiers;
+    }
+
+    inline void enableStringifier(const QMetaObject* metaObject
+                                  , StringifierFunc stringifierFunc) {
+        if(! _stringifiers.contains(metaObject, stringifierFunc)) {
+            _stringifiers.insertMulti(metaObject, stringifierFunc);
+        }
+    }
+
+    inline void disableStringifier(const QMetaObject* metaObject
+                                   , StringifierFunc stringifierFunc) {
+        _stringifiers.remove(metaObject, stringifierFunc);
+    }
+
+private:
+
+    static Stringifiers _stringifiers;
+
+};
+
+QObjectStringifierData::Stringifiers QObjectStringifierData::_stringifiers;
+
+QObjectStringifier::QObjectStringifier(const QMetaObject* metaObject
+                                       , StringifierFunc stringifierFunc)
+    : _metaObject(metaObject)
+    , _stringifierFunc(stringifierFunc) {
+    Q_ASSERT(_metaObject);
+    Q_ASSERT(_stringifierFunc);
+    QObjectStringifierData().enableStringifier(_metaObject, _stringifierFunc);
 }
 
 QObjectStringifier::~QObjectStringifier() {
-    getStringifiers().remove(_metaObject, this);
+    QObjectStringifierData().disableStringifier(_metaObject, _stringifierFunc);
 }
 
 const QMetaObject* QObjectStringifier::getMetaObject() const {
     return _metaObject;
 }
 
+QObjectStringifier::StringifierFunc QObjectStringifier::getStringifierFunc() const {
+    return _stringifierFunc;
+}
+
 void QObjectStringifier::stringify(const QObject* object, QString& buffer) {
-    const auto& stringifiers = getStringifiers();
-    const QMetaObject* metaObject = object ? object->metaObject() : nullptr;
+    QObjectStringifierData data;
+    const auto& stringifiers = data.getStringifiers();
+    const QMetaObject* metaObject = object ? object->metaObject() : &QObject::staticMetaObject;
     decltype(stringifiers.find(metaObject)) iter;
     while((iter = stringifiers.find(metaObject)) == stringifiers.constEnd()) {
         metaObject = metaObject->superClass();
     }
-    iter.value()->doStringify(object, buffer);
+    iter.value()(object, buffer);
 }
 
 DECLARE_VALUE_STRINGIFIER(QObjectBaseValueStringifier, QMetaType::QObjectStar);
@@ -56,9 +98,7 @@ DEFINE_VALUE_STRINGIFIER(QObjectBaseValueStringifier) {
 }
 static QObjectBaseValueStringifier _QObjectBaseValueStringifier;
 
-DECLARE_QOBJECT_STRINGIFIER(QObjectBaseStringifier, nullptr);
-DEFINE_QOBJECT_STRINGIFIER(QObjectBaseStringifier) {
-    QValueStringifier::stringify(QVariant::fromValue<void*>(
-                                     const_cast<QObject*>(object)), buffer);
+IMPLEMENT_QOBJECT_STRINGIFIER(QObject) {
+    QVariant const value = QVariant::fromValue<void*>(const_cast<QObject*>(object));
+    QValueStringifier::stringify(value, buffer);
 }
-static QObjectBaseStringifier _QObjectBaseStringifier;

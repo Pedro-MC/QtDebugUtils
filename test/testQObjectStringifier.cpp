@@ -34,21 +34,14 @@
 #error Must define POINTER_MARK for target architecture.
 #endif
 
-DECLARE_QOBJECT_STRINGIFIER(QTestSignalerStringifier, &QTestSignaler::staticMetaObject);
-DEFINE_QOBJECT_STRINGIFIER(QTestSignalerStringifier) {
-    Q_ASSERT(qobject_cast<const QTestSignaler*>(object));
-    buffer.append(QLatin1Char('<'));
-    buffer.append(QString::fromLatin1(getMetaObject()->className()));
-    buffer.append(QLatin1Char('>'));
-}
+#define DECLARE_TEST_STRINGIFIER_FUNC(CLASS) \
+    DECLARE_QOBJECT_STRINGIFIER_FUNC(CLASS) { \
+        Q_ASSERT(qobject_cast<const CLASS*>(object)); \
+        buffer.append(QLatin1Literal("<" #CLASS ">")); \
+    }
 
-DECLARE_QOBJECT_STRINGIFIER(QTestSignalerDStringifier, &QTestSignalerD::staticMetaObject);
-DEFINE_QOBJECT_STRINGIFIER(QTestSignalerDStringifier) {
-    Q_ASSERT(qobject_cast<const QTestSignalerD*>(object));
-    buffer.append(QLatin1Char('<'));
-    buffer.append(QString::fromLatin1(getMetaObject()->className()));
-    buffer.append(QLatin1Char('>'));
-}
+DECLARE_TEST_STRINGIFIER_FUNC(QTestSignaler)
+DECLARE_TEST_STRINGIFIER_FUNC(QTestSignalerD)
 
 void QDebugUtilsTest::testQObjectStringifier() {
     QFETCH(bool, enableQTestSignalerStringifier);
@@ -57,13 +50,15 @@ void QDebugUtilsTest::testQObjectStringifier() {
     QFETCH(QString, expectedWithoutType);
     QFETCH(QString, expectedWithType);
 
-    QScopedPointer<const QTestSignalerStringifier> testSignalerStringifier(
+    QScopedPointer<const QObjectStringifier> testSignalerStringifier(
                 enableQTestSignalerStringifier
-                ? new QTestSignalerStringifier
+                ? new QObjectStringifier(&QTestSignaler::staticMetaObject
+                                         , &QTestSignalerStringifierFunc)
                 : nullptr);
-    QScopedPointer<const QTestSignalerDStringifier> testSignalerDStringifier(
+    QScopedPointer<const QObjectStringifier> testSignalerDStringifier(
                 enableQTestSignalerDStringifier
-                ? new QTestSignalerDStringifier
+                ? new QObjectStringifier(&QTestSignalerD::staticMetaObject
+                                         , &QTestSignalerDStringifierFunc)
                 : nullptr);
 
     QString bufferWithoutType;
