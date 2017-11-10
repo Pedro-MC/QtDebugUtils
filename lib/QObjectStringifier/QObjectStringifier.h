@@ -60,6 +60,16 @@ public:
     StringifierFunc getStringifierFunc() const;
 
     /**
+     * @brief Enables the stringifier.
+     */
+    void enable();
+
+    /**
+     * @brief Disables the stringifier.
+     */
+    void disable();
+
+    /**
      * @brief Stringify the given object and append it to the given buffer.
      * @param object Pointer to the object to be stringified. Can be an object
      *               from a class derived from QObject.

@@ -66,11 +66,11 @@ QObjectStringifier::QObjectStringifier(const QMetaObject* metaObject
     , _stringifierFunc(stringifierFunc) {
     Q_ASSERT(_metaObject);
     Q_ASSERT(_stringifierFunc);
-    QObjectStringifierData().enableStringifier(_metaObject, _stringifierFunc);
+    enable();
 }
 
 QObjectStringifier::~QObjectStringifier() {
-    QObjectStringifierData().disableStringifier(_metaObject, _stringifierFunc);
+    disable();
 }
 
 const QMetaObject* QObjectStringifier::getMetaObject() const {
@@ -79,6 +79,14 @@ const QMetaObject* QObjectStringifier::getMetaObject() const {
 
 QObjectStringifier::StringifierFunc QObjectStringifier::getStringifierFunc() const {
     return _stringifierFunc;
+}
+
+void QObjectStringifier::enable() {
+    QObjectStringifierData().enableStringifier(_metaObject, _stringifierFunc);
+}
+
+void QObjectStringifier::disable() {
+    QObjectStringifierData().disableStringifier(_metaObject, _stringifierFunc);
 }
 
 void QObjectStringifier::stringify(const QObject* object, QString& buffer) {
