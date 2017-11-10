@@ -4,16 +4,25 @@
 
 ## API
 
-**QObjectStringifier** provides one method to do the work:
-```C++
-static void QObjectStringifier::stringify(const QObject* object, QString& buffer);
-```
+**QObjectStringifier** provides the following static method to do the stringification:
+
+* `stringify(const QObject* object, QString& buffer)`
 
 The string representation of the given object will be appended to the given buffer.
 
-New QObject stringifiers can be defined by defining classes derived from **QObjectStringifier** and creating an instance of those classes.
+**QObjectStringifier** allows thread safe operations but must be explicitly enabled/disabled using the following static methods:
 
-The **QObjectStringifier** also connects to the **QValueStringifier** so  that `QValueStringifier::stringify()` will also use the instanciated **QObjectStringifier**s.
+* `enableThreadSafe()` to enable thread safe operations (disabled by default due to overhead).
+* `disableThreadSafe()` to disable thread safe operations.
+
+A new QObject stringifier can be defined by defining a stringifier function and instanciating a **QObjectStringifier** with the stringifier function as a parameter. The macro `IMPLEMENT_QOBJECT_STRINGIFIER(CLASS)` can help with the boilerplate code.
+
+A **QObjectStringifier** instance can be enable or disabled using the following methods:
+
+* `enable()`.
+* `disable()`.
+
+The **QObjectStringifier** also connects to the **QValueStringifier** so  that `QValueStringifier::stringify()` will also use the **QObjectStringifier** stringifiers when stringifying QObject pointers.
 
 ## Examples
 
@@ -33,45 +42,23 @@ private:
     char _bar;
 };
 
-// Create a class derived from QObjectStringifier to stringify FooBar objects.
-class FooBarStringifier : public QObjectStringifier {
-public:
-    FooBarStringifier() : QObjectStringifier(&FooBar::staticMetaObject) {}
-
-private:
-    virtual void doStringify(const QObject* object, QString& buffer) const override {
-        const FooBar* const fb = qobject_cast<const FooBar*>(object);
-	Q_ASSERT(fb);
-        buffer.append(QLatin1Literal("FooBar{foo="));
-        QValueStringifier::stringify(QVariant::fromValue<int>(fb->getFoo()), buffer);
-        buffer.append(QLatin1Literal(";bar="));
-        QValueStringifier::stringify(QVariant::fromValue<char>(fb->getBar()), buffer);
-        buffer.append(QLatin1Char('}'));
-    }
-};
-
-// Create an instance of the FooBar stringifier.
-static const FooBarStringifier _FooBarStringifier;
-
-#if 0
-// The IMPLEMENT_QOBJECT_STRINGIFIER macro can be used to reduce the boilerplate code.
-// The following code is produces code equivalent to the FooBarStringifier class and static instance above.
+// Implement a stringifier function for the FooBar class instances.
 IMPLEMENT_QOBJECT_STRINGIFIER(FooBar) {
-        const FooBar* const fb = qobject_cast<const FooBar*>(object);
-	Q_ASSERT(fb);
-        buffer.append(QLatin1Literal("FooBar{foo="));
-        QValueStringifier::stringify(QVariant::fromValue<int>(fb->getFoo()), buffer);
-        buffer.append(QLatin1Literal(";bar="));
-        QValueStringifier::stringify(QVariant::fromValue<char>(fb->getBar()), buffer);
-        buffer.append(QLatin1Char('}'));
+    const FooBar* const fb = qobject_cast<const FooBar*>(object);
+    Q_ASSERT(fb);
+    buffer.append(QLatin1Literal("FooBar{foo="));
+    QValueStringifier::stringify(QVariant::fromValue<int>(fb->getFoo()), buffer);
+    buffer.append(QLatin1Literal(";bar="));
+    QValueStringifier::stringify(QVariant::fromValue<char>(fb->getBar()), buffer);
+    buffer.append(QLatin1Char('}'));
 }
-#endif
 
 int main() {
     QByteArray buffer;
     FooBar fb(9,'X');
-    // Usualy,
-    QValueStringifier::stringify(QVariant::fromValue<QObject*>(&fb), buffer);
+    QObjectStringifier::stringify(&fb, buffer);
+    // Since QObjectStringifier is regitered with QValueStringifier the following line is equivalent.
+    // QValueStringifier::stringify(QVariant::fromValue<QObject*>(&fb), buffer);
     /* buffer == "FooBar{foo=9;bar='X'}" */
     buffer.clear();
     QValueStringifier::stringify(QVariant::fromValue<QObject*>(&fb), buffer, /*withType*/ true);
