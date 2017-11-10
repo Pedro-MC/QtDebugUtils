@@ -38,11 +38,16 @@ public:
      *                   stringified by the stringifier being constructed.
      * @param stringifierFunc Pointer to the function that actually stringifies
      *                        instances of the target class.
+     * @param enableAtConstruction If true, the stringifier will be enabled at
+     *                             construction.
+     *                             If false, the enable() method needs to be
+     *                             called explicitly to enable the stringifier.
      * @note Multiple stringifiers for the same class can be constructed but
      *       only the most recently enabled stringifier will be used.
      */
     QObjectStringifier(const QMetaObject* metaObject
-                       , StringifierFunc stringifierFunc);
+                       , StringifierFunc stringifierFunc
+                       , bool enableAtConstruction = true);
 
     /** Destructor. */
     ~QObjectStringifier();

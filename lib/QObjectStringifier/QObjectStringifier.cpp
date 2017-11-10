@@ -61,12 +61,15 @@ private:
 QObjectStringifierData::Stringifiers QObjectStringifierData::_stringifiers;
 
 QObjectStringifier::QObjectStringifier(const QMetaObject* metaObject
-                                       , StringifierFunc stringifierFunc)
+                                       , StringifierFunc stringifierFunc
+                                       , bool enableAtConstruction)
     : _metaObject(metaObject)
     , _stringifierFunc(stringifierFunc) {
     Q_ASSERT(_metaObject);
     Q_ASSERT(_stringifierFunc);
-    enable();
+    if(enableAtConstruction) {
+        enable();
+    }
 }
 
 QObjectStringifier::~QObjectStringifier() {
