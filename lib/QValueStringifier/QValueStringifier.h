@@ -39,7 +39,7 @@ public:
      * @note Custom types must be declared with Q_DECLARE_METATYPE(TYPE).
      * @note The type id can be determine by using the function qMetaTypeId<TYPE>().
      * @note Multiple stringifiers for the same type can be constructed but
-     *       only the most recently constructed stringifier will be used.
+     *       only the most recently enabled stringifier will be used.
      */
     QValueStringifier(QMetaType::Type typeId, StringifierFunc stringifierFunc);
 
@@ -59,6 +59,16 @@ public:
      * @return
      */
     StringifierFunc getStringifierFunc() const;
+
+    /**
+     * @brief Enables the stringifier.
+     */
+    void enable();
+
+    /**
+     * @brief Disables the stringifier.
+     */
+    void disable();
 
     /**
      * @brief Stringify the given object and append it to the given buffer.

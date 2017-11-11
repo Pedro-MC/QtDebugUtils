@@ -81,11 +81,11 @@ QValueStringifier::QValueStringifier(QMetaType::Type typeId
     : _typeId(typeId)
     , _stringifierFunc(stringifierFunc) {
     Q_ASSERT(_stringifierFunc);
-    QValueStringifierData().enableStringifier(_typeId, _stringifierFunc);
+    enable();
 }
 
 QValueStringifier::~QValueStringifier() {
-    QValueStringifierData().disableStringifier(_typeId, _stringifierFunc);
+    disable();
 }
 
 QMetaType::Type QValueStringifier::getTypeId() const {
@@ -94,6 +94,14 @@ QMetaType::Type QValueStringifier::getTypeId() const {
 
 QValueStringifier::StringifierFunc QValueStringifier::getStringifierFunc() const {
     return _stringifierFunc;
+}
+
+void QValueStringifier::enable() {
+    QValueStringifierData().enableStringifier(_typeId, _stringifierFunc);
+}
+
+void QValueStringifier::disable() {
+    QValueStringifierData().disableStringifier(_typeId, _stringifierFunc);
 }
 
 void QValueStringifier::stringify(const QVariant& var, QString& buffer
@@ -247,7 +255,7 @@ DECLARE_VALUE_STRINGIFIER_FUNC(unknown) {
     buffer.append(QLatin1Literal("{?}"));
 }
 static QValueStringifier unknownStringifierFuncRegister
-        (QMetaType::UnknownType, &unknownStringifierFunc);
+    (QMetaType::UnknownType, &unknownStringifierFunc);
 
 IMPLEMENT_VALUE_STRINGIFIER(bool) {
     ASSERT_TYPE(bool);
