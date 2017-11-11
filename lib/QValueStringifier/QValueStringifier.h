@@ -27,40 +27,69 @@ class QValueStringifier {
 
 public:
 
-    virtual ~QValueStringifier();
+    /**
+     * @brief Stringifier functions must have this signature.
+     */
+    typedef void (*StringifierFunc)(const QVariant& var, QString& buffer);
 
-    QMetaType::Type getType() const;
+    /**
+     * @brief Constructor.
+     * @param typeId Id of the type to be stringified.
+     * @param func Pointer to the function that actually stringifies the value.
+     * @note Custom types must be declared with Q_DECLARE_METATYPE(TYPE).
+     * @note The type id can be determine by using the function qMetaTypeId<TYPE>().
+     * @note Multiple stringifiers for the same type can be constructed but
+     *       only the most recently constructed stringifier will be used.
+     */
+    QValueStringifier(QMetaType::Type typeId, StringifierFunc stringifierFunc);
 
-    static void stringify(const QVariant& value, QString& buffer
+    /**
+      * @brief Destructor.
+      */
+    ~QValueStringifier();
+
+    /**
+     * @brief Returns the type id.
+     * @return
+     */
+    QMetaType::Type getTypeId() const;
+
+    /**
+     * @brief Returns the stringifier function pointer.
+     * @return
+     */
+    StringifierFunc getStringifierFunc() const;
+
+    /**
+     * @brief Stringify the given object and append it to the given buffer.
+     * @param var QVariant containing the value to be stringified.
+     * @param buffer Buffer where the stringified value will be appended, with
+     *               the data already in the buffer being left unchanged.
+     * @param withType If true, the stringified value will be prefixed by the
+     *                 type and wrapped in parenthesis, like TYPE(STRVALUE).
+     *                 If false, only the stringified value will be appended to
+     *                 the given buffer.
+     */
+    static void stringify(const QVariant& var, QString& buffer
                           , bool withType = false);
-
-protected:
-
-    explicit QValueStringifier(QMetaType::Type type);
 
 private:
 
-    virtual void doStringify(const QVariant& value, QString& buffer) const = 0;
-
-    const QMetaType::Type _type;
+    QMetaType::Type _typeId;
+    StringifierFunc _stringifierFunc;
 
 };
 
-#define DECLARE_VALUE_STRINGIFIER(CLASS, QMETATYPE_ID) \
-    class CLASS : public QValueStringifier { \
-    public: \
-    CLASS() : QValueStringifier(QMETATYPE_ID) {} \
-    private: \
-    virtual void doStringify(const QVariant& var, QString& buffer) const override; \
-    }
+#define DECLARE_VALUE_STRINGIFIER_FUNC(TYPE) \
+    static void TYPE##StringifierFunc(const QVariant& var, QString& buffer)
 
-#define DEFINE_VALUE_STRINGIFIER(CLASS) \
-    void CLASS::doStringify(const QVariant& var, QString& buffer) const
+#define REGISTER_VALUE_STRINGIFIER_FUNC(TYPE) \
+    static QValueStringifier TYPE##StringifierFuncRegister \
+    (static_cast<QMetaType::Type>(qMetaTypeId<TYPE>()), &TYPE##StringifierFunc)
 
-#define IMPLEMENT_VALUE_STRINGIFIER(CLASS, VALUE) \
-    DECLARE_VALUE_STRINGIFIER(CLASS, \
-    static_cast<QMetaType::Type>(QVariant::fromValue(VALUE).userType())); \
-    static CLASS _##CLASS; \
-    DEFINE_VALUE_STRINGIFIER(CLASS)
+#define IMPLEMENT_VALUE_STRINGIFIER(TYPE) \
+    DECLARE_VALUE_STRINGIFIER_FUNC(TYPE); \
+    REGISTER_VALUE_STRINGIFIER_FUNC(TYPE); \
+    DECLARE_VALUE_STRINGIFIER_FUNC(TYPE)
 
 #endif // QVALUESTRINGIFIER_H

@@ -132,11 +132,10 @@ void QObjectStringifier::stringify(const QObject* object, QString& buffer) {
     iter.value()(object, buffer);
 }
 
-DECLARE_VALUE_STRINGIFIER(QObjectBaseValueStringifier, QMetaType::QObjectStar);
-DEFINE_VALUE_STRINGIFIER(QObjectBaseValueStringifier) {
+typedef QObject* qobjectstar;
+IMPLEMENT_VALUE_STRINGIFIER(qobjectstar) {
     QObjectStringifier::stringify(var.value<QObject*>(), buffer);
 }
-static QObjectBaseValueStringifier _QObjectBaseValueStringifier;
 
 IMPLEMENT_QOBJECT_STRINGIFIER(QObject) {
     QVariant const value = QVariant::fromValue<void*>(const_cast<QObject*>(object));

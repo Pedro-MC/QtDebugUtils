@@ -90,10 +90,11 @@ struct TestType {
 
 Q_DECLARE_METATYPE(TestType)
 
-IMPLEMENT_VALUE_STRINGIFIER(TestTypeValueStringifier, TestType()) {
-    Q_ASSERT(var.userType() == static_cast<int>(getType()));
+IMPLEMENT_VALUE_STRINGIFIER(TestType) {
+    Q_ASSERT(var.userType() == qMetaTypeId<TestType>());
     buffer.append(QLatin1Literal("{value="));
-    stringify(QVariant::fromValue<int>(var.value<TestType>().value), buffer);
+    const QVariant value = QVariant::fromValue<int>(var.value<TestType>().value);
+    QValueStringifier::stringify(value, buffer);
     buffer.append(QLatin1Literal("}"));
 }
 

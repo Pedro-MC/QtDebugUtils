@@ -46,10 +46,11 @@ struct TestTypeA {
 
 Q_DECLARE_METATYPE(TestTypeA)
 
-IMPLEMENT_VALUE_STRINGIFIER(TestTypeAValueStringifier, TestTypeA()) {
-    Q_ASSERT(var.userType() == static_cast<int>(getType()));
+IMPLEMENT_VALUE_STRINGIFIER(TestTypeA) {
+    Q_ASSERT(var.userType() == qMetaTypeId<TestTypeA>());
     buffer.append(QLatin1Literal("{value="));
-    stringify(QVariant::fromValue<int>(var.value<TestTypeA>().value), buffer);
+    const QVariant value = QVariant::fromValue<int>(var.value<TestTypeA>().value);
+    QValueStringifier::stringify(value, buffer);
     buffer.append(QLatin1Literal("}"));
 }
 
@@ -59,10 +60,11 @@ struct TestTypeB {
 
 Q_DECLARE_METATYPE(TestTypeB)
 
-IMPLEMENT_VALUE_STRINGIFIER(TestTypeBValueStringifier, TestTypeB()) {
-    Q_ASSERT(var.userType() == static_cast<int>(getType()));
+IMPLEMENT_VALUE_STRINGIFIER(TestTypeB) {
+    Q_ASSERT(var.userType() == qMetaTypeId<TestTypeB>());
     buffer.append(QLatin1Literal("{value="));
-    stringify(QVariant::fromValue<char>(var.value<TestTypeB>().value), buffer);
+    const QVariant value = QVariant::fromValue<char>(var.value<TestTypeB>().value);
+    QValueStringifier::stringify(value, buffer);
     buffer.append(QLatin1Literal("}"));
 }
 

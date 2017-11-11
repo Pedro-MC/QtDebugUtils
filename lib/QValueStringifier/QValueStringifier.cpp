@@ -39,27 +39,67 @@ static const QLatin1Char closeCurlyBracket = QLatin1Char('}');
 static const QLatin1Char asterisk          = QLatin1Char('*');
 static const QLatin1Char comma             = QLatin1Char(',');
 
-static QMultiHash<QMetaType::Type, const QValueStringifier*>& getStringifiers() {
-    static QMultiHash<QMetaType::Type, const QValueStringifier*> stringifiers;
-    return stringifiers;
-}
+class QValueStringifierData {
 
-QValueStringifier::QValueStringifier(QMetaType::Type type)
-    : _type(type) {
-    getStringifiers().insertMulti(_type, this);
+public:
+
+    typedef QValueStringifier::StringifierFunc StringifierFunc;
+    typedef QMultiHash<QMetaType::Type, StringifierFunc> Stringifiers;
+
+    QValueStringifierData() {
+    }
+
+    ~QValueStringifierData() {
+    }
+
+    inline Stringifiers& getStringifiers() {
+        return _stringifiers;
+    }
+
+    inline void enableStringifier(QMetaType::Type typeId
+                                  , StringifierFunc stringifierFunc) {
+        if(! _stringifiers.contains(typeId, stringifierFunc)) {
+            _stringifiers.insertMulti(typeId, stringifierFunc);
+        }
+    }
+
+    inline void disableStringifier(QMetaType::Type typeId
+                                   , StringifierFunc stringifierFunc) {
+        _stringifiers.remove(typeId, stringifierFunc);
+    }
+
+private:
+
+    static Stringifiers _stringifiers;
+
+};
+
+QValueStringifierData::Stringifiers QValueStringifierData::_stringifiers;
+
+QValueStringifier::QValueStringifier(QMetaType::Type typeId
+                                     , StringifierFunc stringifierFunc)
+    : _typeId(typeId)
+    , _stringifierFunc(stringifierFunc) {
+    Q_ASSERT(_stringifierFunc);
+    QValueStringifierData().enableStringifier(_typeId, _stringifierFunc);
 }
 
 QValueStringifier::~QValueStringifier() {
-    getStringifiers().remove(_type, this);
+    QValueStringifierData().disableStringifier(_typeId, _stringifierFunc);
 }
 
-QMetaType::Type QValueStringifier::getType() const {
-    return _type;
+QMetaType::Type QValueStringifier::getTypeId() const {
+    return _typeId;
+}
+
+QValueStringifier::StringifierFunc QValueStringifier::getStringifierFunc() const {
+    return _stringifierFunc;
 }
 
 void QValueStringifier::stringify(const QVariant& var, QString& buffer
                                   , bool withType) {
-    const auto& stringifiers = getStringifiers();
+    QValueStringifierData data;
+    const auto& stringifiers = data.getStringifiers();
     auto iter = stringifiers.find(static_cast<QMetaType::Type>(var.userType()));
     if(iter == stringifiers.constEnd()) {
         iter = stringifiers.find(QMetaType::UnknownType);
@@ -68,7 +108,7 @@ void QValueStringifier::stringify(const QVariant& var, QString& buffer
         buffer.append(QLatin1String(var.typeName()));
         buffer.append(openParenthesis);
     }
-    iter.value()->doStringify(var, buffer);
+    iter.value()(var, buffer);
     if(withType) {
         buffer.append(closeParenthesis);
     }
@@ -147,31 +187,26 @@ static void stringifyNumberQuad(TYPE n1, TYPE n2, TYPE n3, TYPE n4, QString& buf
     buffer.append(closeCurlyBracket);
 }
 
-#define IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(ID) \
-    DECLARE_VALUE_STRINGIFIER(ID##ValueStringifier, QMetaType:: ID); \
-    static ID##ValueStringifier _##ID##ValueStringifier; \
-    DEFINE_VALUE_STRINGIFIER(ID##ValueStringifier) \
+#define ASSERT_TYPE(TYPE) \
+    Q_ASSERT(var.userType() == qMetaTypeId<TYPE>())
 
-#define ASSERT_TYPE() \
-    Q_ASSERT(var.userType() == static_cast<int>(getType()))
-
-#define IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(ID, TYPE) \
-    IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(ID) { \
-    ASSERT_TYPE(); \
+#define IMPLEMENT_NUMBER_STRINGIFIER(TYPE) \
+    IMPLEMENT_VALUE_STRINGIFIER(TYPE) { \
+    ASSERT_TYPE(TYPE); \
     stringifyNumber(var.value<TYPE>(), buffer); \
     }
 
-#define IMPLEMENT_CHAR_STRINGIFIER_QMETATYPE(ID, TYPE) \
-    IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(ID) { \
-    ASSERT_TYPE(); \
+#define IMPLEMENT_CHAR_STRINGIFIER(TYPE) \
+    IMPLEMENT_VALUE_STRINGIFIER(TYPE) { \
+    ASSERT_TYPE(TYPE); \
     buffer.append(singleQuote); \
     stringifyChar(var.value<TYPE>(), buffer); \
     buffer.append(singleQuote); \
     }
 
-#define IMPLEMENT_LIST_STRINGIFIER_QMETATYPE(TYPE, CODE) \
-    IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(TYPE) { \
-    ASSERT_TYPE(); \
+#define IMPLEMENT_LIST_STRINGIFIER(TYPE, CODE) \
+    IMPLEMENT_VALUE_STRINGIFIER(TYPE) { \
+    ASSERT_TYPE(TYPE); \
     buffer.append(openCurlyBracket); \
     bool first = true; \
     for(const auto& item : var.value<TYPE>()) { \
@@ -185,136 +220,141 @@ static void stringifyNumberQuad(TYPE n1, TYPE n2, TYPE n3, TYPE n4, QString& buf
     buffer.append(closeCurlyBracket); \
     }
 
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(Short, short)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(Int, int)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(Long, long)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(LongLong, qlonglong)
+IMPLEMENT_NUMBER_STRINGIFIER(short)
+IMPLEMENT_NUMBER_STRINGIFIER(int)
+IMPLEMENT_NUMBER_STRINGIFIER(long)
+IMPLEMENT_NUMBER_STRINGIFIER(qlonglong)
 
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(UShort, ushort)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(UInt, uint)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(ULong, ulong)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(ULongLong, qulonglong)
+IMPLEMENT_NUMBER_STRINGIFIER(ushort)
+IMPLEMENT_NUMBER_STRINGIFIER(uint)
+IMPLEMENT_NUMBER_STRINGIFIER(ulong)
+IMPLEMENT_NUMBER_STRINGIFIER(qulonglong)
 
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(Float, float)
-IMPLEMENT_NUMBER_STRINGIFIER_QMETATYPE(Double, double)
+IMPLEMENT_NUMBER_STRINGIFIER(float)
+IMPLEMENT_NUMBER_STRINGIFIER(double)
 
-IMPLEMENT_CHAR_STRINGIFIER_QMETATYPE(Char, char)
-IMPLEMENT_CHAR_STRINGIFIER_QMETATYPE(UChar, unsigned char)
-IMPLEMENT_CHAR_STRINGIFIER_QMETATYPE(SChar, signed char)
-IMPLEMENT_CHAR_STRINGIFIER_QMETATYPE(QChar, QChar)
+typedef signed char schar;
+IMPLEMENT_CHAR_STRINGIFIER(char)
+IMPLEMENT_CHAR_STRINGIFIER(uchar)
+IMPLEMENT_CHAR_STRINGIFIER(schar)
+IMPLEMENT_CHAR_STRINGIFIER(QChar)
 
-IMPLEMENT_LIST_STRINGIFIER_QMETATYPE(QStringList, stringifyString(item, buffer))
-IMPLEMENT_LIST_STRINGIFIER_QMETATYPE(QVariantList, stringify(item, buffer, true))
+IMPLEMENT_LIST_STRINGIFIER(QStringList, stringifyString(item, buffer))
+IMPLEMENT_LIST_STRINGIFIER(QVariantList, QValueStringifier::stringify(item, buffer, true))
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(UnknownType) {
+DECLARE_VALUE_STRINGIFIER_FUNC(unknown) {
     Q_UNUSED(var);
     buffer.append(QLatin1Literal("{?}"));
 }
+static QValueStringifier unknownStringifierFuncRegister
+        (QMetaType::UnknownType, &unknownStringifierFunc);
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(Bool) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(bool) {
+    ASSERT_TYPE(bool);
     buffer.append(var.value<bool>()
                   ? QLatin1Literal("true")
                   : QLatin1Literal("false"));
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QString) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QString) {
+    ASSERT_TYPE(QString);
     stringifyString(var.value<QString>(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QByteArray) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QByteArray) {
+    ASSERT_TYPE(QByteArray);
     stringifyString(var.value<QByteArray>(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QObjectStar) {
-    ASSERT_TYPE();
+typedef QObject* qobjectstar;
+IMPLEMENT_VALUE_STRINGIFIER(qobjectstar) {
+    ASSERT_TYPE(QObject*);
     stringifyPointer(var.value<QObject*>(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(VoidStar) {
-    ASSERT_TYPE();
+typedef void* voidstar;
+IMPLEMENT_VALUE_STRINGIFIER(voidstar) {
+    ASSERT_TYPE(void*);
     stringifyPointer(var.value<void*>(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QUuid) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QUuid) {
+    ASSERT_TYPE(QUuid);
     buffer.append(var.value<QUuid>().toString());
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QDate) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QDate) {
+    ASSERT_TYPE(QDate);
     buffer.append(openCurlyBracket);
     buffer.append(var.value<QDate>().toString(QStringLiteral("yyyy-MM-dd")));
     buffer.append(closeCurlyBracket);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QTime) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QTime) {
+    ASSERT_TYPE(QTime);
     buffer.append(openCurlyBracket);
     buffer.append(var.value<QTime>().toString(QStringLiteral("HH:mm:ss")));
     buffer.append(closeCurlyBracket);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QDateTime) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QDateTime) {
+    ASSERT_TYPE(QDateTime);
     buffer.append(openCurlyBracket);
     buffer.append(var.value<QDateTime>().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
     buffer.append(closeCurlyBracket);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QUrl) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QUrl) {
+    ASSERT_TYPE(QUrl);
     buffer.append(openCurlyBracket);
     buffer.append(var.value<QUrl>().toString());
     buffer.append(closeCurlyBracket);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QPoint) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QPoint) {
+    ASSERT_TYPE(QPoint);
     const QPoint point = var.value<QPoint>();
     stringifyNumberPair(point.x(), point.y(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QPointF) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QPointF) {
+    ASSERT_TYPE(QPointF);
     const QPointF point = var.value<QPointF>();
     stringifyNumberPair(point.x(), point.y(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QSize) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QSize) {
+    ASSERT_TYPE(QSize);
     const QSize size = var.value<QSize>();
     stringifyNumberPair(size.width(), size.height(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QSizeF) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QSizeF) {
+    ASSERT_TYPE(QSizeF);
     const QSizeF size = var.value<QSizeF>();
     stringifyNumberPair(size.width(), size.height(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QRect) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QRect) {
+    ASSERT_TYPE(QRect);
     const QRect rect = var.value<QRect>();
     stringifyNumberQuad(rect.x(), rect.y(), rect.width(), rect.height(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QRectF) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QRectF) {
+    ASSERT_TYPE(QRectF);
     const QRectF rect = var.value<QRectF>();
     stringifyNumberQuad(rect.x(), rect.y(), rect.width(), rect.height(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QLine) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QLine) {
+    ASSERT_TYPE(QLine);
     const QLine line = var.value<QLine>();
     stringifyNumberQuad(line.x1(), line.y1(), line.x2(), line.y2(), buffer);
 }
 
-IMPLEMENT_VALUE_STRINGIFIER_QMETATYPE(QLineF) {
-    ASSERT_TYPE();
+IMPLEMENT_VALUE_STRINGIFIER(QLineF) {
+    ASSERT_TYPE(QLineF);
     const QLineF line = var.value<QLineF>();
     stringifyNumberQuad(line.x1(), line.y1(), line.x2(), line.y2(), buffer);
 }
