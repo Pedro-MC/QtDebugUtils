@@ -18,6 +18,7 @@
 *******************************************************************************/
 #include "QValueStringifier.h"
 
+#include <QMutex>
 #include <QMultiHash>
 #include <QString>
 #include <QUrl>
@@ -46,10 +47,17 @@ public:
     typedef QValueStringifier::StringifierFunc StringifierFunc;
     typedef QMultiHash<QMetaType::Type, StringifierFunc> Stringifiers;
 
-    QValueStringifierData() {
+    QValueStringifierData()
+        : _useMutex(_threadSafeAccess) {
+        if(_useMutex) {
+            _mutex.lock();
+        }
     }
 
     ~QValueStringifierData() {
+        if(_useMutex) {
+            _mutex.unlock();
+        }
     }
 
     inline Stringifiers& getStringifiers() {
@@ -68,13 +76,27 @@ public:
         _stringifiers.remove(typeId, stringifierFunc);
     }
 
+    static inline void enableThreadSafeAccess() {
+        _threadSafeAccess = true;
+    }
+
+    static inline void disableThreadSafeAccess() {
+        _threadSafeAccess = false;
+    }
+
 private:
 
+    const bool _useMutex;
+
     static Stringifiers _stringifiers;
+    static QMutex _mutex;
+    static bool _threadSafeAccess;
 
 };
 
 QValueStringifierData::Stringifiers QValueStringifierData::_stringifiers;
+QMutex QValueStringifierData::_mutex;
+bool QValueStringifierData::_threadSafeAccess = false;
 
 QValueStringifier::QValueStringifier(QMetaType::Type typeId
                                      , StringifierFunc stringifierFunc
@@ -105,6 +127,14 @@ void QValueStringifier::enable() {
 
 void QValueStringifier::disable() {
     QValueStringifierData().disableStringifier(_typeId, _stringifierFunc);
+}
+
+void QValueStringifier::enableThreadSafe() {
+    QValueStringifierData::enableThreadSafeAccess();
+}
+
+void QValueStringifier::disableThreadSafe() {
+    QValueStringifierData::disableThreadSafeAccess();
 }
 
 void QValueStringifier::stringify(const QVariant& var, QString& buffer
