@@ -36,12 +36,17 @@ public:
      * @brief Constructor.
      * @param typeId Id of the type to be stringified.
      * @param func Pointer to the function that actually stringifies the value.
+     * @param enableAtConstruction If true, the stringifier will be enabled at
+     *                             construction.
+     *                             If false, the enable() method needs to be
+     *                             called explicitly to enable the stringifier.
      * @note Custom types must be declared with Q_DECLARE_METATYPE(TYPE).
      * @note The type id can be determine by using the function qMetaTypeId<TYPE>().
      * @note Multiple stringifiers for the same type can be constructed but
      *       only the most recently enabled stringifier will be used.
      */
-    QValueStringifier(QMetaType::Type typeId, StringifierFunc stringifierFunc);
+    QValueStringifier(QMetaType::Type typeId, StringifierFunc stringifierFunc
+                      , bool enableAtConstruction = true);
 
     /**
       * @brief Destructor.

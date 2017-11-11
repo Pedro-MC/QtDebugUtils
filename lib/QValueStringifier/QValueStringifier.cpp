@@ -77,11 +77,14 @@ private:
 QValueStringifierData::Stringifiers QValueStringifierData::_stringifiers;
 
 QValueStringifier::QValueStringifier(QMetaType::Type typeId
-                                     , StringifierFunc stringifierFunc)
+                                     , StringifierFunc stringifierFunc
+                                     , bool enableAtConstruction)
     : _typeId(typeId)
     , _stringifierFunc(stringifierFunc) {
     Q_ASSERT(_stringifierFunc);
-    enable();
+    if(enableAtConstruction) {
+        enable();
+    }
 }
 
 QValueStringifier::~QValueStringifier() {
