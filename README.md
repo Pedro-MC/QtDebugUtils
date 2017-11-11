@@ -24,7 +24,7 @@ All classes have tests that cover almost 100% of the code and pass all tests.
 ## Examples
 
 Each class has a corresponding .md file that has some basic documentation and examples.
-The classs' header files have the API documented.
+The class' header files have the API documented.
 The unit tests can also server as (somewhat convuluted) examples on how to use the classes.
 
 ## Building
