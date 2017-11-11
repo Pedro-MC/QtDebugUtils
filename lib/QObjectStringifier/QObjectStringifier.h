@@ -77,7 +77,7 @@ public:
     /**
      * @brief Enable thread safe operations.
      * @note Thread safe operations are disabled by default, to avoid overhead.
-     *       This function should be called before calling QObjectStringifier(),
+     * @note This function should be called before calling QObjectStringifier(),
      *       enable() or disable() with multiple threads running.
      *       If all stringifiers are constructed and enabled/disabled before
      *       any threads are used then there is no need to call this function.
@@ -86,7 +86,7 @@ public:
 
     /**
      * @brief Disable thread safe operations.
-     * @note Thread safe monitoring is disabled by default, to avoid overhead.
+     * @note Thread safe operations are disabled by default, to avoid overhead.
      */
     static void disableThreadSafe();
 
