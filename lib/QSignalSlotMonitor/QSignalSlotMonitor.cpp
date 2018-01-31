@@ -313,5 +313,6 @@ QSignalSlotMonitor::SlotInfo::SlotInfo(QObject* receiver, int methodIndex)
     , _methodIndex(methodIndex) {
     Q_ASSERT(receiver);
     Q_ASSERT(methodIndex >= 0);
-    Q_ASSERT(getMetaMethod().methodType() == QMetaMethod::Slot);
+    Q_ASSERT(getMetaMethod().methodType() == QMetaMethod::Slot
+             || getMetaMethod().methodType() == QMetaMethod::Signal);
 }
