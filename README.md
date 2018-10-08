@@ -15,7 +15,7 @@
 
 ## Dependencies
 
-**QtDebugUtils** depends only on [Qt 5](https://www.qt.io/) and uses qmake for building. **QtDebugUtils** was developed and tested with Qt 5.9 but should work with older Qt 5 versions. Note that since **QSignalSlotMonitor** uses a internal Qt API, it is not protected by  Qt's public API stability guarantees.
+**QtDebugUtils** depends only on [Qt 5](https://www.qt.io/) and uses qmake for building. **QtDebugUtils** was developed and tested with Qt 5.9, 5.10 and 5.11 but should work with older Qt 5 versions. Note that since **QSignalSlotMonitor** uses a internal Qt API, it is not protected by Qt's public API stability guarantees.
 
 ## Unit Tests
 
